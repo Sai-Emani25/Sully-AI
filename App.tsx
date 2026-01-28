@@ -6,12 +6,15 @@ import LeadsPage from './pages/Leads';
 import CampaignsPage from './pages/Campaigns';
 import KnowledgePage from './pages/Knowledge';
 import AgentsPage from './pages/Agents';
+import { isCalendarConnected, requestCalendarAccess } from './googleCalendarService';
+import { GoogleAuthModal } from './components/DemoModals';
 
 export interface Project {
   id: string;
   name: string;
   icon: string;
   color: string;
+  startupMode?: boolean;
 }
 
 const INITIAL_PROJECTS: Project[] = [
@@ -21,6 +24,8 @@ const INITIAL_PROJECTS: Project[] = [
 ];
 
 const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 blur-[120px] rounded-full"></div>
@@ -32,12 +37,13 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
             <span className="text-3xl text-white font-bold">S</span>
           </div>
           <h1 className="text-3xl font-black text-white tracking-tight">Sully.AI</h1>
-          <p className="text-slate-400 mt-2 text-sm">Agentic Marketing Automation Hub</p>
+          <p className="text-slate-300 mt-2 text-sm font-medium">Client & Startup GTM Co-Pilot</p>
+          <p className="text-slate-500 mt-1 text-[11px]">Designed for agencies, consultants, and startup builders.</p>
         </div>
 
         <div className="space-y-4">
           <button 
-            onClick={onLogin}
+            onClick={() => setShowAuthModal(true)}
             className="w-full flex items-center justify-center gap-3 bg-white text-slate-900 font-bold py-4 rounded-2xl hover:bg-slate-100 transition shadow-xl active:scale-95 group"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -46,15 +52,25 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            Sign in with Google
+            Continue with Google
           </button>
         </div>
 
-        <p className="text-center text-[10px] text-slate-500 mt-8 leading-relaxed uppercase tracking-tighter">
-          By continuing, you agree to Sully.AI's <br/>
-          <span className="text-indigo-400 font-bold hover:underline cursor-pointer">Terms of Service</span> and <span className="text-indigo-400 font-bold hover:underline cursor-pointer">Privacy Policy</span>
+        <p className="text-center text-[10px] text-slate-500 mt-6 leading-relaxed tracking-tighter">
+          This demo will simulate requesting access to your Google Calendar
+          to auto-create meetings for qualified leads. No real data is sent
+          to Google in this environment.
         </p>
       </div>
+
+      <GoogleAuthModal 
+        isOpen={showAuthModal} 
+        onClose={async () => {
+          setShowAuthModal(false);
+          await requestCalendarAccess();
+          onLogin();
+        }} 
+      />
     </div>
   );
 };
@@ -92,7 +108,7 @@ const Sidebar = ({
           <span>Sully.AI</span>
           <span className="text-xs bg-indigo-900 text-indigo-200 px-2 py-0.5 rounded-full uppercase tracking-tighter">Pro</span>
         </h1>
-        <p className="text-slate-400 text-xs mt-1">Agentic Marketing Automation</p>
+        <p className="text-slate-400 text-xs mt-1">Agentic marketing for clients & startup builders</p>
       </div>
 
       <nav className="flex-1 px-4 py-2 space-y-2 overflow-y-auto custom-scrollbar">
@@ -207,11 +223,43 @@ const App: React.FC = () => {
 
   if (!isLoggedIn) return <LoginPage onLogin={handleLogin} />;
 
+  const toggleStartupMode = () => {
+    const updated = { ...activeProject, startupMode: !activeProject.startupMode };
+    setActiveProject(updated);
+    const updatedProjects = projects.map(p => p.id === activeProject.id ? updated : p);
+    setProjects(updatedProjects);
+  };
+
   return (
     <HashRouter>
       <div className="flex min-h-screen">
         <Sidebar projects={projects} activeProject={activeProject} onProjectChange={setActiveProject} onAddProject={handleAddProject} onRemoveProject={handleRemoveProject} onLogout={handleLogout} />
-        <main className="flex-1 ml-64 p-8 bg-gray-50 min-h-screen">
+        <main className="flex-1 ml-64 px-10 pt-10 pb-16 bg-gradient-to-br from-slate-50 via-white to-indigo-50 min-h-screen">
+          <div className="flex justify-end mb-8">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/20 border border-white/10 animate-fadeIn">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Mode</span>
+              <button 
+                onClick={toggleStartupMode}
+                className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-all ${
+                  !activeProject.startupMode 
+                    ? 'bg-emerald-500 text-emerald-50 shadow-sm' 
+                    : 'bg-slate-800 text-slate-200 border border-slate-600 hover:bg-slate-700'
+                }`}
+              >
+                Clients
+              </button>
+              <button 
+                onClick={toggleStartupMode}
+                className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-all ${
+                  activeProject.startupMode 
+                    ? 'bg-purple-500 text-purple-50 shadow-sm' 
+                    : 'bg-slate-800 text-slate-200 border border-slate-600 hover:bg-slate-700'
+                }`}
+              >
+                Startup Builders
+              </button>
+            </div>
+          </div>
           <Routes>
             <Route path="/" element={<Dashboard key={activeProject.id} project={activeProject} />} />
             <Route path="/leads" element={<LeadsPage key={activeProject.id} project={activeProject} />} />

@@ -112,7 +112,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ project }) => {
       setScoringStatus(prev => ({ ...prev, [leadId]: 'Researching Market Signals...' }));
 
       if (lead) {
-        const res = await leadScorerAgent(lead, dynamicICP, project.startupMode || false);
+        const res = await leadScorerAgent(lead, dynamicICP);
         
         const newHistory = [
           ...(lead.scoreHistory || []),
@@ -477,6 +477,62 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ project }) => {
                           </div>
                         )}
                       </div>
+                    </div> 
+                            value={lead.name} 
+                            onChange={(e) => updateLeadField(lead.id, 'name', e.target.value)} 
+                          />
+                        </EditableWrapper>
+                        {lead.score && (
+                          <div className="flex flex-col items-center group/tooltip relative flex-shrink-0">
+                            <div className={`text-3xl font-black ${lead.score > 80 ? 'text-emerald-600' : lead.score > 50 ? 'text-amber-600' : 'text-rose-600'}`}>
+                              {lead.score}%
+                            </div>
+                            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Fit Score</span>
+                            
+                            <div className="absolute bottom-full right-0 mb-4 w-80 p-5 bg-slate-900/95 backdrop-blur-xl text-white text-xs rounded-3xl opacity-0 group-hover/tooltip:opacity-100 transition-all pointer-events-none z-[100] shadow-2xl border border-white/10 scale-95 group-hover/tooltip:scale-100">
+                              <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-3">
+                                    <ProgressBar label="Dynamic Fit" value={lead.scoreBreakdown.vision} color="text-purple-400" />
+                                  </>
+                                )}
+                              </div>
+
+                              <p className="leading-relaxed text-slate-300 mb-4 bg-white/5 p-3 rounded-xl border border-white/5 italic text-[11px]">
+                                "{lead.icpReasoning}"
+                              </p>
+
+                              {lead.scoreSources && lead.scoreSources.length > 0 && (
+                                <div className="pt-3 border-t border-white/10">
+                                  <p className="font-bold text-slate-500 mb-2 uppercase tracking-widest text-[9px]">Research Grounding</p>
+                                  <div className="flex flex-col gap-2">
+                                    {lead.scoreSources.map((s, i) => (
+                                      <a
+                                        key={i}
+                                        href={s.uri}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-indigo-300 hover:text-white transition-colors truncate block flex items-center gap-2 pointer-events-auto text-[10px]"
+                                      >
+                                        <span>🔗</span> {s.title}
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="absolute top-full right-6 border-8 border-transparent border-t-slate-900/95"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <EditableWrapper>
+                        <input 
+                          type="text" 
+                          className="text-sm text-slate-500 bg-transparent hover:bg-slate-100/50 focus:bg-white focus:ring-2 focus:ring-indigo-100 rounded-lg px-3 py-1.5 outline-none w-full border border-transparent focus:border-indigo-200 transition-all" 
+                          value={lead.title} 
+                          placeholder="Job Title"
+                          onChange={(e) => updateLeadField(lead.id, 'title', e.target.value)} 
+                        />
+                      </EditableWrapper>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -603,39 +659,7 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ project }) => {
                               ? 'bg-indigo-50 border-indigo-200 text-indigo-500 animate-pulse' 
                               : 'bg-gradient-to-r from-indigo-600 to-purple-600 border-transparent text-white hover:shadow-lg hover:shadow-indigo-200 active:scale-95'
                           }`}
-                        >
-                          {scoringStatus[lead.id] || '🤖 Run AI Score'}
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => handleScoreLead(lead.id)} 
-                          className="text-sm font-bold text-indigo-600 border border-indigo-200 px-5 py-2.5 rounded-xl hover:bg-indigo-50 transition-all"
-                        >
-                          🔄 Re-evaluate Score
-                        </button>
-                      )}
-                      
-                      <button 
-                        onClick={() => scheduleMeetingForLead(lead)}
-                        className="text-sm font-bold text-emerald-600 border border-emerald-200 px-5 py-2.5 rounded-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
-                      >
-                        <span>📅</span> Add to Calendar
-                      </button>
-                      
-                      <button 
-                        onClick={() => setLeads(leads.filter(l => l.id !== lead.id))} 
-                        className="text-sm font-bold text-rose-600 border border-rose-200 px-5 py-2.5 rounded-xl hover:bg-rose-50 transition-all flex items-center justify-center gap-2"
-                      >
-                        <span>🗑️</span> Remove Lead
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          
-          {filteredLeads.length === 0 && leads.length > 0 ? (
+           filteredLeads.length === 0 && leads.length > 0 && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-16 text-center">
               <div className="text-6xl mb-4">🔍</div>
               <p className="text-lg font-bold text-slate-400">No leads match your search</p>
@@ -646,34 +670,8 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ project }) => {
               >
                 Clear search
               </button>
-            </div>
-          ) : null}
-
-          {leads.length === 0 ? (
-            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl shadow-lg border-2 border-dashed border-indigo-200 p-20 text-center">
-              <div className="text-7xl mb-6 animate-bounce">🚀</div>
-              <p className="text-2xl font-black text-slate-700 mb-2">Ready to build your pipeline?</p>
-              <p className="text-base text-slate-500 mb-8 max-w-md mx-auto">
-                Add your first prospect to {project.name} and let Sully's AI agents score, qualify, and help you convert leads
-              </p>
-              <button 
-                onClick={() => setIsAddModalOpen(true)}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-xl font-bold hover:shadow-xl hover:shadow-indigo-200 transition-all active:scale-95 text-lg"
-              >
-                ➕ Add Your First Lead
-              </button>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Sidebar: Action Library */}
-        <div className="xl:col-span-3">
-          <div className="space-y-6 sticky top-6">
+            </div>space-y-6 sticky top-6">
             <div className="bg-gradient-to-br from-white to-slate-50 p-6 rounded-2xl shadow-lg border border-slate-200">
-              <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <span className="text-lg">📋</span> 
-                <span>Action Library</span>
-              </h3>
               <div className="space-y-2 mb-4">
                 {actions.map(a => (
                   <div key={a} className="flex items-center justify-between p-3 bg-white rounded-xl group transition-all hover:shadow-md hover:border-indigo-100 border border-slate-100">
@@ -710,7 +708,65 @@ const LeadsPage: React.FC<LeadsPageProps> = ({ project }) => {
                     Leads scoring 80+ are high-value prospects. Prioritize calendar meetings and personalized outreach for maximum conversion.
                   </p>
                 </div>
+              </div  </button>
+                      )}
+                      
+                      <button 
+                        onClick={() => scheduleMeetingForLead(lead)}
+                        className="text-sm font-bold text-emerald-600 border border-emerald-200 px-5 py-2.5 rounded-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
+                      >
+                        <span>📅</span> Add to Calendar
+                      </button>
+                      
+                      <button 
+                        onClick={() => setLeads(leads.filter(l => l.id !== lead.id))} 
+                        className="text-sm font-bold text-rose-600 border border-rose-200 px-5 py-2.5 rounded-xl hover:bg-rose-50 transition-all flex items-center justify-center gap-2"
+                      >
+                        <span>🗑️</span> Remove Lead
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
+            );
+          })}
+          
+          {leads.length === 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-20 text-center">
+              <div className="text-6xl mb-4 opacity-20">📋</div>
+              <p className="text-lg font-bold text-slate-400">No leads yet</p>
+              <p className="text-sm text-slate-300 mt-2">Start your B2B strategy for {project.name} by adding a prospect</p>
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar: Action Library */}
+        <div className="xl:col-span-3">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 sticky top-6">
+            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2"><span>📋</span> Action Library</h3>
+            <div className="space-y-2 mb-4">
+              {actions.map(a => (
+                <div key={a} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl group transition-all hover:bg-slate-100">
+                  <span className="text-xs font-bold text-slate-600">{a}</span>
+                  <button onClick={() => setActions(actions.filter(x => x !== a))} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-colors p-1">✕</button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="New action..." 
+                className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" 
+                value={newAction} 
+                onChange={(e) => setNewAction(e.target.value)} 
+                onKeyDown={(e) => e.key === 'Enter' && newAction && (setActions([...actions, newAction]), setNewAction(''))} 
+              />
+              <button 
+                onClick={() => newAction && (setActions([...actions, newAction]), setNewAction(''))} 
+                className="bg-indigo-600 text-white px-4 rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm"
+              >
+                +
+              </button>
             </div>
           </div>
         </div>

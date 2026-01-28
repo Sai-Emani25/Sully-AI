@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Project } from '../App';
+import { CalendarEvent } from '../types';
+import { getCalendarEvents, saveCalendarEvents } from '../googleCalendarService';
 
 const KPI_DATA_BASE = [
   { title: 'Conv. Uplift', baseValue: 32.4, suffix: '%', change: 'Lead to Opp', trend: '+4.2%', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: '📈' },
@@ -35,6 +37,50 @@ const Dashboard: React.FC<{ project: Project }> = ({ project }) => {
   const syncKey = `sully_sync_${project.id}`;
   const [lastSync, setLastSync] = useState(() => localStorage.getItem(syncKey) || "Never");
   const [isSyncing, setIsSyncing] = useState(false);
+  const eventsKey = `sully_calendar_events_${project.id}`;
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
+    const existing = getCalendarEvents(project.id);
+    if (existing.length > 0) return existing;
+
+    const baseDate = new Date();
+    const day = (offset: number) => {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() + offset);
+      d.setHours(11, 0, 0, 0);
+      return d.toISOString();
+    };
+
+    const samples: Record<string, CalendarEvent[]> = {
+      'proj-1': [
+        {
+          id: 'cal-sample-1', projectId: project.id, leadId: '1', leadName: 'CISO, AP Government',
+          title: 'Security posture review (client)', start: day(1), location: 'Google Meet', status: 'scheduled', source: 'sample'
+        },
+        {
+          id: 'cal-sample-2', projectId: project.id, leadId: '2', leadName: 'Cloud infra lead',
+          title: 'Multi-cloud threat modelling (startup)', start: day(3), location: 'Zoom', status: 'scheduled', source: 'sample'
+        }
+      ],
+      'proj-2': [
+        {
+          id: 'cal-sample-3', projectId: project.id, leadId: '1', leadName: 'Hospital COO',
+          title: 'OPD workflow + HIPAA review', start: day(2), location: 'Google Meet', status: 'scheduled', source: 'sample'
+        }
+      ],
+      'proj-3': [
+        {
+          id: 'cal-sample-4', projectId: project.id, leadId: '1', leadName: 'Retail expansion head',
+          title: 'Tier-2 omni-channel rollout', start: day(1), location: 'Client HQ', status: 'scheduled', source: 'sample'
+        }
+      ]
+    };
+
+    const seeded = samples[project.id] || [];
+    if (seeded.length) {
+      saveCalendarEvents(project.id, seeded);
+    }
+    return seeded;
+  });
 
   // Unique Chart Data per Project
   const chartData = useMemo(() => {
@@ -55,6 +101,7 @@ const Dashboard: React.FC<{ project: Project }> = ({ project }) => {
   };
 
   useEffect(() => { localStorage.setItem(syncKey, lastSync); }, [lastSync, syncKey]);
+  useEffect(() => { localStorage.setItem(eventsKey, JSON.stringify(calendarEvents)); }, [calendarEvents, eventsKey]);
 
   const handleSync = () => {
     setIsSyncing(true);
@@ -70,7 +117,7 @@ const Dashboard: React.FC<{ project: Project }> = ({ project }) => {
   ];
 
   return (
-    <div className="space-y-8 animate-fadeIn max-w-7xl mx-auto pb-10">
+    <div className="space-y-10 animate-fadeIn max-w-7xl mx-auto pb-16">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg ${project.color}`}>{project.icon}</div>
@@ -172,6 +219,37 @@ const Dashboard: React.FC<{ project: Project }> = ({ project }) => {
             <button className="w-full mt-8 py-4 text-xs font-black text-indigo-600 border-2 border-indigo-50 rounded-2xl hover:bg-indigo-50 transition-all uppercase tracking-widest">
               Manage Access
             </button>
+          </section>
+
+          <section className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+            <h3 className="font-black text-sm text-slate-900 mb-4 flex items-center gap-2">
+              <span className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">📅</span>
+              Upcoming meetings (Google Calendar demo)
+            </h3>
+            {calendarEvents.length === 0 && (
+              <p className="text-[11px] text-slate-400 italic">No meetings yet for this workspace.</p>
+            )}
+            <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar mt-2">
+              {calendarEvents.map((ev) => {
+                const d = new Date(ev.start);
+                return (
+                  <div key={ev.id} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">{ev.title}</p>
+                      {ev.leadName && (
+                        <p className="text-[10px] text-slate-500">With: {ev.leadName}</p>
+                      )}
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        {d.toLocaleDateString()} · {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                      {ev.source === 'sample' ? 'Sample' : 'Auto'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </section>
 
           <section className="bg-slate-950 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">

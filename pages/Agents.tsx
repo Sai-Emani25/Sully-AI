@@ -92,11 +92,11 @@ const AgentsPage: React.FC<{ project: Project }> = ({ project }) => {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn max-w-7xl mx-auto pb-20">
+    <div className="space-y-10 animate-fadeIn max-w-7xl mx-auto pb-20">
       <header className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Agent Command Center</h2>
-          <p className="text-slate-500 font-medium tracking-tight">Orchestrating agents specifically for <span className="text-indigo-600 font-bold">{project.name}</span>.</p>
+          <p className="text-slate-500 font-medium tracking-tight">Orchestrating GTM agents for <span className="text-indigo-600 font-bold">{project.name}</span> clients & startup deals.</p>
         </div>
         <div className="flex gap-2">
           <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-100">
@@ -106,7 +106,7 @@ const AgentsPage: React.FC<{ project: Project }> = ({ project }) => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {AGENTS.map((agent) => (
           <div key={agent.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-xl transition-all">
             <div className={`absolute top-0 right-0 w-24 h-24 ${agent.id === 'ls' ? 'bg-blue-50' : agent.id === 'cg' ? 'bg-indigo-50' : 'bg-emerald-50'} -mr-8 -mt-8 rounded-full transition-transform group-hover:scale-150`}></div>

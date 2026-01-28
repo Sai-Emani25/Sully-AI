@@ -45,3 +45,15 @@ export interface StrategyInsight {
   content: string;
   timestamp: string;
 }
+
+export interface CalendarEvent {
+  id: string;
+  projectId: string;
+  leadId?: string;
+  leadName?: string;
+  title: string;
+  start: string; // ISO timestamp
+  location?: string;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'draft';
+  source: 'sample' | 'auto' | 'manual';
+}
