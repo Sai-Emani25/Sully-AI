@@ -24,6 +24,14 @@ const CampaignsPage: React.FC<CampaignsPageProps> = ({ project }) => {
            'Engage leads with new retail platform.';
   });
   
+  const DEMO_CSV_DATA: CSVRow[] = [
+    { name: 'Rajesh Kumar', email: 'rajesh@techstart.in', status: 'pending' },
+    { name: 'Priya Menon', email: 'priya.m@innovate.co', status: 'pending' },
+    { name: 'Amit Patel', email: 'amit@digitalventures.com', status: 'pending' },
+    { name: 'Sneha Reddy', email: 'sneha@cloudscale.in', status: 'pending' },
+    { name: 'Arjun Iyer', email: 'arjun.iyer@nextgen.io', status: 'pending' },
+  ];
+  
   const [batchLeads, setBatchLeads] = useState<CSVRow[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -39,6 +47,8 @@ const CampaignsPage: React.FC<CampaignsPageProps> = ({ project }) => {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showLeadSelector, setShowLeadSelector] = useState(false);
   const [currentMinitasks, setCurrentMinitasks] = useState<string[] | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
   const [emailResponses, setEmailResponses] = useState<{leadName: string, email: string, subject: string, response: string, timestamp: string, status: 'new' | 'read'}[]>(() => {
     const emailKey = `sully_email_responses_${project.id}`;
     const saved = localStorage.getItem(emailKey);
@@ -108,6 +118,10 @@ const CampaignsPage: React.FC<CampaignsPageProps> = ({ project }) => {
       setBatchLeads(parsed);
     };
     reader.readAsText(file);
+  };
+
+  const loadDemoData = () => {
+    setBatchLeads([...DEMO_CSV_DATA]);
   };
 
   const handleAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -292,6 +306,28 @@ etc.`;
     alert(`Minitasks PDF sent to ${selectedLead.name} at ${selectedLead.email} ✅\n\n(Demo mode - email not actually sent)`);
   };
 
+  const sendInboxReply = (resp: any) => {
+    if (!replyText.trim()) return;
+    
+    const replyPreview = `Reply sent to ${resp.name}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `Original Message:\n"${resp.text}"\n\n` +
+      `Your Reply:\n${replyText}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `✅ Reply sent successfully (Demo mode)`;
+    
+    setPreviewContent(replyPreview);
+    
+    // Mark as replied and clear reply state
+    setIncomingResponses(prev => prev.map(r => 
+      r.leadId === resp.leadId ? { ...r, status: 'replied' } : r
+    ));
+    setReplyingTo(null);
+    setReplyText('');
+    
+    alert(`Reply sent to ${resp.name} ✅\n\n(Demo mode - email not actually sent)`);
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-10 pb-24 animate-fadeIn">
       <header className="flex justify-between items-center">
@@ -338,11 +374,56 @@ etc.`;
                 <div className="space-y-4">
                   {incomingResponses.map((resp, i) => (
                     <div key={i} className="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-200 transition">
-                      <p className="text-xs font-bold text-slate-800">{resp.name}</p>
-                      <p className="text-[11px] text-slate-500 italic mt-1 line-clamp-2">"{resp.text}"</p>
-                      <button onClick={() => analyzeResponse(resp)} disabled={isProcessing} className="mt-3 w-full text-[10px] font-bold text-indigo-600 border border-indigo-200 py-1.5 rounded-lg hover:bg-indigo-600 hover:text-white transition uppercase tracking-wider disabled:opacity-50">
-                        {isProcessing ? 'Analyzing...' : 'Analyze Sentiment'}
-                      </button>
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">{resp.name}</p>
+                          {resp.status === 'replied' && <span className="text-[9px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold mt-1 inline-block">✅ Replied</span>}
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-500 italic mt-1">"{resp.text}"</p>
+                      
+                      {replyingTo === resp.leadId ? (
+                        <div className="mt-3 space-y-2">
+                          <textarea
+                            className="w-full p-2 text-[11px] border border-indigo-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                            placeholder="Type your reply..."
+                            rows={3}
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => sendInboxReply(resp)}
+                              className="flex-1 text-[10px] font-bold text-white bg-indigo-600 py-2 rounded-lg hover:bg-indigo-700 transition uppercase tracking-wider"
+                            >
+                              📧 Send Reply
+                            </button>
+                            <button 
+                              onClick={() => { setReplyingTo(null); setReplyText(''); }}
+                              className="px-3 text-[10px] font-bold text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-100 transition"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 mt-3">
+                          <button 
+                            onClick={() => analyzeResponse(resp)} 
+                            disabled={isProcessing} 
+                            className="text-[10px] font-bold text-indigo-600 border border-indigo-200 py-1.5 rounded-lg hover:bg-indigo-600 hover:text-white transition uppercase tracking-wider disabled:opacity-50"
+                          >
+                            {isProcessing ? 'Analyzing...' : '📊 Analyze'}
+                          </button>
+                          <button 
+                            onClick={() => setReplyingTo(resp.leadId)}
+                            className="text-[10px] font-bold text-green-600 border border-green-200 py-1.5 rounded-lg hover:bg-green-600 hover:text-white transition uppercase tracking-wider"
+                          >
+                            ✉️ Reply
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                   {incomingResponses.length === 0 && <p className="text-center py-4 text-xs text-slate-300 italic">No incoming responses for this workspace.</p>}
@@ -385,23 +466,71 @@ etc.`;
           </section>
 
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-             <h3 className="text-sm font-bold text-slate-400 uppercase">Task Configuration</h3>
-             <textarea className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none min-h-[80px]" value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} placeholder="Objective..." />
+             <h3 className="text-sm font-bold text-slate-400 uppercase">Mass Email Campaign</h3>
+             <p className="text-xs text-slate-500">Upload a CSV file with Name and Email columns, or use demo data to see the feature in action.</p>
+             
+             <textarea className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none min-h-[80px]" value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} placeholder="Enter your email objective or pitch..." />
+             
              <div className="grid grid-cols-2 gap-3">
-               <button onClick={() => csvInputRef.current?.click()} className="p-2 border border-slate-100 bg-slate-50 rounded-lg text-xs font-bold flex flex-col items-center gap-1 hover:bg-white transition-colors">📄 CSV<input type="file" ref={csvInputRef} className="hidden" accept=".csv" onChange={handleCSVUpload} /></button>
-               <button onClick={() => assetInputRef.current?.click()} className="p-2 border border-slate-100 bg-slate-50 rounded-lg text-xs font-bold flex flex-col items-center gap-1 hover:bg-white transition-colors">🖼️ Asset<input type="file" ref={assetInputRef} className="hidden" multiple accept="image/*" onChange={handleAssetUpload} /></button>
+               <button onClick={() => csvInputRef.current?.click()} className="p-3 border border-slate-200 bg-slate-50 rounded-lg text-xs font-bold flex flex-col items-center gap-2 hover:bg-white hover:border-indigo-300 transition-all">
+                 <span className="text-xl">📄</span>
+                 <span>Upload CSV</span>
+                 <input type="file" ref={csvInputRef} className="hidden" accept=".csv" onChange={handleCSVUpload} />
+               </button>
+               <button onClick={loadDemoData} className="p-3 border border-indigo-200 bg-indigo-50 rounded-lg text-xs font-bold flex flex-col items-center gap-2 hover:bg-indigo-100 transition-all text-indigo-600">
+                 <span className="text-xl">🎯</span>
+                 <span>Load Demo</span>
+               </button>
              </div>
+             
+             {batchLeads.length > 0 && (
+               <div className="mt-4 p-4 bg-gradient-to-br from-slate-50 to-indigo-50 rounded-xl border border-indigo-100">
+                 <div className="flex items-center justify-between mb-3">
+                   <p className="text-xs font-bold text-slate-700">📊 Loaded Contacts: {batchLeads.length}</p>
+                   <button onClick={() => setBatchLeads([])} className="text-[10px] text-red-500 hover:text-red-700 font-bold">Clear All</button>
+                 </div>
+                 <div className="space-y-2 max-h-40 overflow-y-auto">
+                   {batchLeads.map((lead, idx) => (
+                     <div key={idx} className="flex items-center justify-between p-2 bg-white rounded-lg text-[11px] border border-slate-100">
+                       <div className="flex-1">
+                         <p className="font-bold text-slate-800">{lead.name}</p>
+                         <p className="text-slate-500 text-[10px]">{lead.email}</p>
+                       </div>
+                       <span className={`px-2 py-1 rounded text-[9px] font-bold ${
+                         lead.status === 'pending' ? 'bg-slate-100 text-slate-600' :
+                         lead.status === 'processing' ? 'bg-yellow-100 text-yellow-700' :
+                         lead.status === 'completed' ? 'bg-green-100 text-green-700' :
+                         'bg-red-100 text-red-700'
+                       }`}>
+                         {lead.status === 'processing' ? '⏳' : lead.status === 'completed' ? '✅' : lead.status === 'failed' ? '❌' : '⏸️'} {lead.status.toUpperCase()}
+                       </span>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             )}
+             
+             <div className="pt-2 border-t border-slate-100">
+               <p className="text-xs font-bold text-slate-400 uppercase mb-3">Attachments (Optional)</p>
+               <button onClick={() => assetInputRef.current?.click()} className="w-full p-3 border border-dashed border-slate-300 bg-slate-50 rounded-lg text-xs font-bold flex flex-col items-center gap-2 hover:bg-white hover:border-indigo-300 transition-all">
+                 <span className="text-xl">🖼️</span>
+                 <span>Add Images/PDFs</span>
+                 <input type="file" ref={assetInputRef} className="hidden" multiple accept="image/*,.pdf" onChange={handleAssetUpload} />
+               </button>
+             </div>
+             
              {assets.length > 0 && (
                <div className="flex flex-wrap gap-2 pt-2">
                  {assets.map((a, i) => (
                    <span key={i} className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md border border-indigo-100 flex items-center gap-1">
-                     {a.name} <button onClick={() => setAssets(assets.filter((_, idx) => idx !== i))} className="hover:text-red-500">✕</button>
+                     📎 {a.name} <button onClick={() => setAssets(assets.filter((_, idx) => idx !== i))} className="hover:text-red-500 ml-1 font-bold">✕</button>
                    </span>
                  ))}
                </div>
              )}
-             <button onClick={executeTask} disabled={isProcessing} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-95 shadow-xl shadow-indigo-100">
-               {isProcessing ? 'Agent Thinking...' : 'Generate Drafts'}
+             
+             <button onClick={executeTask} disabled={isProcessing || batchLeads.length === 0} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 shadow-xl shadow-indigo-100 text-sm">
+               {isProcessing ? '🤖 Generating Emails...' : `📧 Generate ${batchLeads.length} Personalized Emails`}
              </button>
           </section>
         </div>
@@ -424,17 +553,79 @@ etc.`;
              </div>
              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {campaignMessages.length === 0 && (
-                  <div className="h-full flex flex-col items-center justify-center text-center py-20">
+                  <div className="h-full flex flex-col items-center justify-center text-center py-12">
                     <span className="text-6xl mb-4">💡</span>
-                    <p className="font-bold text-lg">Campaign Ideation Assistant</p>
+                    <p className="font-bold text-lg">Campaign Strategy AI</p>
                     <p className="text-sm text-gray-500 mt-2 max-w-md">
                       Describe a campaign idea and I'll break it down into actionable minitasks you can send to your leads
                     </p>
-                    <div className="mt-6 text-left bg-slate-50 p-4 rounded-xl max-w-md">
-                      <p className="text-xs font-bold text-slate-600 mb-2">Try asking:</p>
-                      <p className="text-xs text-slate-500">• "Create a product launch campaign for our new feature"</p>
-                      <p className="text-xs text-slate-500">• "Plan a customer retention email sequence"</p>
-                      <p className="text-xs text-slate-500">• "Design a referral program for our best clients"</p>
+                    
+                    <div className="mt-8 w-full max-w-xl space-y-3">
+                      <p className="text-xs font-bold text-slate-600 mb-3">🎯 Quick Start Prompts:</p>
+                      
+                      <button
+                        onClick={() => {
+                          setCampaignQuery("Create a product launch campaign for our new AI-powered analytics dashboard targeting enterprise clients");
+                          document.querySelector<HTMLFormElement>('form')?.requestSubmit();
+                        }}
+                        className="w-full p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl text-left hover:shadow-md transition-all group"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">🚀</span>
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-600">Product Launch Campaign</p>
+                            <p className="text-xs text-slate-500 mt-1">Launch strategy for new AI analytics dashboard targeting enterprise clients</p>
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCampaignQuery("Design a customer retention strategy with personalized email sequences for SaaS clients showing low engagement");
+                          document.querySelector<HTMLFormElement>('form')?.requestSubmit();
+                        }}
+                        className="w-full p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl text-left hover:shadow-md transition-all group"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">🔄</span>
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 group-hover:text-green-600">Retention & Re-engagement</p>
+                            <p className="text-xs text-slate-500 mt-1">Win back low-engagement SaaS clients with personalized sequences</p>
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCampaignQuery("Build a referral program campaign to incentivize our top 20% clients to refer other businesses in their network");
+                          document.querySelector<HTMLFormElement>('form')?.requestSubmit();
+                        }}
+                        className="w-full p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl text-left hover:shadow-md transition-all group"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">🤝</span>
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 group-hover:text-amber-600">Referral Growth Program</p>
+                            <p className="text-xs text-slate-500 mt-1">Leverage top clients to drive referrals from their network</p>
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCampaignQuery("Plan a thought leadership content campaign with LinkedIn posts, webinars, and case studies to establish our brand as industry experts");
+                          document.querySelector<HTMLFormElement>('form')?.requestSubmit();
+                        }}
+                        className="w-full p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl text-left hover:shadow-md transition-all group"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">📚</span>
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600">Thought Leadership Series</p>
+                            <p className="text-xs text-slate-500 mt-1">Multi-channel content strategy to position as industry experts</p>
+                          </div>
+                        </div>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -489,6 +680,59 @@ etc.`;
           </div>
         </div>
       </div>
+      
+      {batchLeads.some(lead => lead.status === 'completed' || lead.status === 'failed') && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden animate-fadeIn">
+          <div className="p-6 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-slate-100">
+            <h3 className="font-bold text-slate-800 tracking-tight">📊 Mass Email Generation Results</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              {batchLeads.filter(l => l.status === 'completed').length} successful • 
+              {batchLeads.filter(l => l.status === 'failed').length} failed • 
+              {batchLeads.filter(l => l.status === 'pending' || l.status === 'processing').length} pending
+            </p>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3">
+              {batchLeads.map((lead, idx) => (
+                <div key={idx} className={`p-4 rounded-xl border transition-all ${
+                  lead.status === 'completed' ? 'bg-green-50 border-green-200' :
+                  lead.status === 'failed' ? 'bg-red-50 border-red-200' :
+                  lead.status === 'processing' ? 'bg-yellow-50 border-yellow-200' :
+                  'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="font-bold text-slate-800 text-sm">{lead.name}</p>
+                      <p className="text-xs text-slate-500">{lead.email}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${
+                      lead.status === 'completed' ? 'bg-green-600 text-white' :
+                      lead.status === 'failed' ? 'bg-red-600 text-white' :
+                      lead.status === 'processing' ? 'bg-yellow-600 text-white' :
+                      'bg-slate-300 text-slate-700'
+                    }`}>
+                      {lead.status === 'processing' ? '⏳ Processing' : 
+                       lead.status === 'completed' ? '✅ Sent' : 
+                       lead.status === 'failed' ? '❌ Failed' : 
+                       '⏸️ Pending'}
+                    </span>
+                  </div>
+                  {lead.result && (
+                    <div className="mt-3 pt-3 border-t border-slate-200">
+                      <button 
+                        onClick={() => setPreviewContent(`To: ${lead.name} <${lead.email}>\n\n${lead.result}`)}
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline"
+                      >
+                        📄 View Generated Email →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       
       {showLeadSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn" onClick={() => setShowLeadSelector(false)}>
