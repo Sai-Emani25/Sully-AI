@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, Line, ComposedChart } from 'recharts';
 import { Project } from '../App';
-import { CalendarEvent } from '../types';
+import { CalendarEvent, Lead } from '../types';
 import { getCalendarEvents, saveCalendarEvents } from '../googleCalendarService';
 
 const KPI_DATA_BASE = [
@@ -37,7 +37,21 @@ const Dashboard: React.FC<{ project: Project }> = ({ project }) => {
   const syncKey = `sully_sync_${project.id}`;
   const [lastSync, setLastSync] = useState(() => localStorage.getItem(syncKey) || "Never");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showScoreChart, setShowScoreChart] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const eventsKey = `sully_calendar_events_${project.id}`;
+  
+  // Get leads data for score tracking
+  const leads = useMemo(() => {
+    const leadsKey = `sully_leads_data_${project.id}`;
+    const saved = localStorage.getItem(leadsKey);
+    if (saved) {
+      const parsedLeads: Lead[] = JSON.parse(saved);
+      return parsedLeads.filter(l => l.score && l.score > 0);
+    }
+    return [];
+  }, [project.id, lastSync]);
+  
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
     const existing = getCalendarEvents(project.id);
     if (existing.length > 0) return existing;
@@ -82,6 +96,29 @@ const Dashboard: React.FC<{ project: Project }> = ({ project }) => {
     return seeded;
   });
 
+  // Lead Score Chart Data - Reality vs Expectation
+  const scoreChartData = useMemo(() => {
+    if (!selectedLead || !selectedLead.scoreHistory) return [];
+    
+    const history = selectedLead.scoreHistory;
+    const currentScore = selectedLead.score || 0;
+    
+    const initialScore = history[0]?.score || currentScore;
+    const targetScore = Math.min(100, currentScore + 25);
+    const daysBetween = history.length > 1 ? 7 : 5;
+    
+    return Array.from({ length: daysBetween }).map((_, i) => {
+      const realScore = history[i]?.score || (i < history.length ? history[history.length - 1].score : currentScore);
+      const expectedScore = initialScore + ((targetScore - initialScore) / (daysBetween - 1)) * i;
+      
+      return {
+        name: `Day ${i + 1}`,
+        reality: Math.round(realScore),
+        expectation: Math.round(expectedScore)
+      };
+    });
+  }, [selectedLead]);
+
   // Unique Chart Data per Project
   const chartData = useMemo(() => {
     const seed = project.id.split('-')[1] || '1';
@@ -109,6 +146,11 @@ const Dashboard: React.FC<{ project: Project }> = ({ project }) => {
       setLastSync(new Date().toLocaleTimeString()); 
       setIsSyncing(false); 
     }, 1200);
+  };
+
+  const handleLeadClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setShowScoreChart(true);
   };
 
   const members = WORKSPACE_MEMBERS[project.id] || [
@@ -165,33 +207,108 @@ const Dashboard: React.FC<{ project: Project }> = ({ project }) => {
            <div className="absolute top-0 left-0 w-2 bg-indigo-500 h-full group-hover:w-3 transition-all"></div>
            <div className="flex justify-between items-center mb-8">
              <div>
-               <h3 className="font-black text-xl text-slate-900 tracking-tight">Agent Efficiency Over Time</h3>
-               <p className="text-sm text-slate-500">Automated versus manual engagement metrics.</p>
+               <h3 className="font-black text-xl text-slate-900 tracking-tight">
+                 {showScoreChart && selectedLead ? `Lead Score Tracking: ${selectedLead.name}` : 'Agent Efficiency Over Time'}
+               </h3>
+               <p className="text-sm text-slate-500">
+                 {showScoreChart && selectedLead 
+                   ? `Current Score: ${selectedLead.score}/100 • ${selectedLead.company}` 
+                   : 'Automated versus manual engagement metrics.'}
+               </p>
              </div>
-             <div className="flex gap-4">
-               <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-indigo-500"></div><span className="text-[10px] font-bold text-slate-600 uppercase">AI Efficiency</span></div>
-               <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-slate-200"></div><span className="text-[10px] font-bold text-slate-600 uppercase">Engagement</span></div>
+             <div className="flex items-center gap-4">
+               {showScoreChart ? (
+                 <>
+                   <button 
+                     onClick={() => setShowScoreChart(false)}
+                     className="text-[10px] font-bold text-slate-500 hover:text-slate-700 uppercase tracking-wider px-3 py-1.5 rounded-lg hover:bg-slate-100 transition"
+                   >
+                     ← Back to Overview
+                   </button>
+                   <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-indigo-500"></div><span className="text-[10px] font-bold text-slate-600 uppercase">Reality</span></div>
+                   <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-slate-300"></div><span className="text-[10px] font-bold text-slate-600 uppercase">Expectation</span></div>
+                 </>
+               ) : (
+                 <>
+                   <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-indigo-500"></div><span className="text-[10px] font-bold text-slate-600 uppercase">AI Efficiency</span></div>
+                   <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-slate-200"></div><span className="text-[10px] font-bold text-slate-600 uppercase">Engagement</span></div>
+                 </>
+               )}
              </div>
            </div>
            <div className="h-[300px] w-full">
-             <ResponsiveContainer width="100%" height="100%">
-               <AreaChart data={chartData}>
-                 <defs>
-                   <linearGradient id="colorEff" x1="0" y1="0" x2="0" y2="1">
-                     <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
-                     <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                   </linearGradient>
-                 </defs>
-                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                 <XAxis dataKey="name" hide />
-                 <YAxis hide domain={['dataMin - 10', 'dataMax + 10']} />
-                 <Tooltip 
-                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                 />
-                 <Area type="monotone" dataKey="efficiency" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorEff)" />
-                 <Area type="monotone" dataKey="engagement" stroke="#e2e8f0" strokeWidth={2} fill="transparent" />
-               </AreaChart>
-             </ResponsiveContainer>
+             {showScoreChart && selectedLead ? (
+               <ResponsiveContainer width="100%" height="100%">
+                 <ComposedChart data={scoreChartData}>
+                   <defs>
+                     <linearGradient id="colorReality" x1="0" y1="0" x2="0" y2="1">
+                       <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
+                       <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                     </linearGradient>
+                   </defs>
+                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                   <XAxis 
+                     dataKey="name" 
+                     tick={{ fontSize: 11, fill: '#64748b' }}
+                     stroke="#cbd5e1"
+                   />
+                   <YAxis 
+                     domain={[0, 100]}
+                     tick={{ fontSize: 11, fill: '#64748b' }}
+                     stroke="#cbd5e1"
+                     label={{ value: 'Score', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#64748b' } }}
+                   />
+                   <Tooltip 
+                     contentStyle={{ 
+                       borderRadius: '16px', 
+                       border: 'none', 
+                       boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                       fontSize: '12px'
+                     }}
+                     formatter={(value: number, name: string) => [
+                       `${value}/100`,
+                       name === 'reality' ? 'Actual Score' : 'Projected Score'
+                     ]}
+                   />
+                   <Area 
+                     type="monotone" 
+                     dataKey="reality" 
+                     stroke="#4f46e5" 
+                     strokeWidth={4} 
+                     fillOpacity={1} 
+                     fill="url(#colorReality)"
+                     dot={{ fill: '#4f46e5', r: 5 }}
+                   />
+                   <Line 
+                     type="monotone" 
+                     dataKey="expectation" 
+                     stroke="#cbd5e1" 
+                     strokeWidth={2} 
+                     strokeDasharray="5 5"
+                     dot={{ fill: '#94a3b8', r: 3 }}
+                   />
+                 </ComposedChart>
+               </ResponsiveContainer>
+             ) : (
+               <ResponsiveContainer width="100%" height="100%">
+                 <AreaChart data={chartData}>
+                   <defs>
+                     <linearGradient id="colorEff" x1="0" y1="0" x2="0" y2="1">
+                       <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
+                       <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                     </linearGradient>
+                   </defs>
+                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                   <XAxis dataKey="name" hide />
+                   <YAxis hide domain={['dataMin - 10', 'dataMax + 10']} />
+                   <Tooltip 
+                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                   />
+                   <Area type="monotone" dataKey="efficiency" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorEff)" />
+                   <Area type="monotone" dataKey="engagement" stroke="#e2e8f0" strokeWidth={2} fill="transparent" />
+                 </AreaChart>
+               </ResponsiveContainer>
+             )}
            </div>
         </div>
         
@@ -250,6 +367,50 @@ const Dashboard: React.FC<{ project: Project }> = ({ project }) => {
                 );
               })}
             </div>
+          </section>
+
+          <section className="bg-gradient-to-br from-indigo-500 to-purple-600 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+             <div className="absolute top-[-20%] right-[-20%] w-48 h-48 bg-white/10 rounded-full blur-[60px] group-hover:bg-white/20 transition-colors"></div>
+             <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-3">CRM Lead Scores</h3>
+             <p className="text-lg font-black text-white leading-tight mb-4">Click to view score analytics</p>
+             
+             <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+               {leads.length > 0 ? leads.slice(0, 5).map((lead, i) => (
+                 <button
+                   key={lead.id}
+                   onClick={() => handleLeadClick(lead)}
+                   className="w-full p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl transition-all group/item text-left border border-white/20"
+                 >
+                   <div className="flex items-center justify-between">
+                     <div className="flex-1">
+                       <p className="text-xs font-bold text-white">{lead.name}</p>
+                       <p className="text-[10px] text-indigo-200">{lead.company}</p>
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <span className="text-2xl font-black text-white">{lead.score}</span>
+                       <div className="flex flex-col items-end">
+                         <span className="text-[8px] text-indigo-200 font-bold">SCORE</span>
+                         {lead.scoreHistory && lead.scoreHistory.length > 1 && (
+                           <span className={`text-[9px] font-bold ${
+                             (lead.scoreHistory[lead.scoreHistory.length - 1]?.score || 0) > (lead.scoreHistory[lead.scoreHistory.length - 2]?.score || 0)
+                               ? 'text-emerald-300'
+                               : 'text-red-300'
+                           }`}>
+                             {(lead.scoreHistory[lead.scoreHistory.length - 1]?.score || 0) > (lead.scoreHistory[lead.scoreHistory.length - 2]?.score || 0) ? '▲' : '▼'}
+                           </span>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                 </button>
+               )) : (
+                 <p className="text-xs text-indigo-200 italic py-4">No scored leads yet. Score leads in the Leads page.</p>
+               )}
+             </div>
+             
+             {leads.length > 5 && (
+               <p className="text-[10px] text-indigo-200 mt-3 text-center">+ {leads.length - 5} more leads</p>
+             )}
           </section>
 
           <section className="bg-slate-950 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
