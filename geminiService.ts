@@ -110,6 +110,10 @@ export const leadScorerAgent = async (lead: Lead, dynamicICP: string, startupMod
  * Analyzes lead replies and scores alignment with client vision.
  */
 export const leadResponseAnalystAgent = async (lead: Lead, responseText: string, clientVision: string) => {
+  // Demo mode: Generate realistic analysis based on response content
+  const demoAnalysis = generateDemoResponseAnalysis(responseText, lead, clientVision);
+  if (demoAnalysis) return demoAnalysis;
+
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `Analyze this lead's direct response to our campaign.
@@ -139,10 +143,89 @@ export const leadResponseAnalystAgent = async (lead: Lead, responseText: string,
 };
 
 /**
+ * Generate realistic demo analysis for inbox responses
+ */
+const generateDemoResponseAnalysis = (responseText: string, lead: Lead, clientVision: string) => {
+  const response = responseText.toLowerCase();
+  
+  // Detect key themes in the response
+  let alignmentScore = 50; // Base score
+  let extractedNeeds: string[] = [];
+  let strategicShift = "Continue current engagement strategy with personalized follow-up.";
+  
+  // Security/Cloud Infrastructure signals
+  if (/security|secure|compliance|audit|vulnerability/i.test(responseText)) {
+    extractedNeeds.push("Security and compliance requirements");
+    alignmentScore += 15;
+  }
+  
+  if (/multi-cloud|cloud|infrastructure|aws|azure|gcp/i.test(responseText)) {
+    extractedNeeds.push("Multi-cloud or cloud infrastructure");
+    alignmentScore += 12;
+  }
+  
+  // Healthcare signals
+  if (/hipaa|health|medical|patient|clinical/i.test(responseText)) {
+    extractedNeeds.push("Healthcare compliance and data privacy");
+    alignmentScore += 15;
+  }
+  
+  if (/api|integration|stack|system/i.test(responseText)) {
+    extractedNeeds.push("API integration and system connectivity");
+    alignmentScore += 10;
+  }
+  
+  // Retail signals
+  if (/omnichannel|inventory|retail|store|customer/i.test(responseText)) {
+    extractedNeeds.push("Omnichannel retail capabilities");
+    alignmentScore += 15;
+  }
+  
+  // Engagement signals
+  if (/urgently|urgent|asap|soon|quarter/i.test(responseText)) {
+    alignmentScore += 10;
+    strategicShift = "Prioritize rapid response - high urgency detected. Schedule demo within 48 hours.";
+  }
+  
+  if (/help|assist|support|solution/i.test(responseText)) {
+    alignmentScore += 8;
+  }
+  
+  if (/pricing|price|cost|budget/i.test(responseText)) {
+    alignmentScore += 12;
+    strategicShift = "Lead is budget-conscious. Prepare ROI deck and pricing tiers before next contact.";
+  }
+  
+  if (/case study|example|reference|similar/i.test(responseText)) {
+    alignmentScore += 10;
+    extractedNeeds.push("Social proof and validation");
+    strategicShift = "Provide industry-specific case studies and customer testimonials in next touchpoint.";
+  }
+  
+  // Cap score at 100
+  alignmentScore = Math.min(100, alignmentScore);
+  
+  // Format extracted needs
+  const needsText = extractedNeeds.length > 0 
+    ? extractedNeeds.join("; ") 
+    : "General inquiry - needs discovery required";
+  
+  return {
+    extractedNeeds: needsText,
+    alignmentScore,
+    strategicShift
+  };
+};
+
+/**
  * Email Performance Analyzer - Updates lead score based on email response quality.
  * Analyzes engagement, intent, and business fit from automated campaign responses.
  */
 export const analyzeEmailPerformance = async (emailResponse: string, leadName: string, leadCompany: string, currentScore: number, clientVision: string, startupMode: boolean = false) => {
+  // Demo mode: Generate realistic analysis based on email content
+  const demoAnalysis = generateDemoEmailAnalysis(emailResponse, leadName, leadCompany, currentScore, startupMode);
+  if (demoAnalysis) return demoAnalysis;
+
   const modeInstructions = startupMode
     ? `STARTUP MODE: Prioritize signals of innovation, speed of response, founder involvement, willingness to try new things, and growth mindset. Look for phrases indicating agility, experimentation, and forward-thinking.`
     : `CLIENT MODE: Prioritize traditional B2B signals like budget authority, established processes, formal timelines, and decision-making hierarchy.`;
@@ -193,6 +276,94 @@ export const analyzeEmailPerformance = async (emailResponse: string, leadName: s
     }
   });
   return JSON.parse(response.text || '{}');
+};
+
+/**
+ * Generate realistic demo analysis for email responses
+ */
+const generateDemoEmailAnalysis = (emailResponse: string, leadName: string, leadCompany: string, currentScore: number, startupMode: boolean) => {
+  const response = emailResponse.toLowerCase();
+  
+  // Detect high engagement signals
+  const hasSchedulingRequest = /schedule|call|meeting|next week|discuss|demo/i.test(emailResponse);
+  const hasPricingQuery = /pricing|price|cost|budget|quote/i.test(emailResponse);
+  const hasSpecificQuestion = /how|what|can you|do you|interested/i.test(emailResponse);
+  const hasUrgency = /urgent|asap|this quarter|immediately|soon/i.test(emailResponse);
+  const hasCaseStudyRequest = /case study|example|reference|similar/i.test(emailResponse);
+  
+  let scoreIncrease = 0;
+  let engagementLevel: "high" | "medium" | "low" = "low";
+  const keyIndicators: string[] = [];
+  
+  // Analyze engagement based on content
+  if (hasSchedulingRequest) {
+    scoreIncrease += 20;
+    engagementLevel = "high";
+    keyIndicators.push("Requested scheduling/call");
+  }
+  
+  if (hasPricingQuery) {
+    scoreIncrease += 15;
+    engagementLevel = "high";
+    keyIndicators.push("Asked about pricing");
+  }
+  
+  if (hasCaseStudyRequest) {
+    scoreIncrease += 12;
+    if (engagementLevel === "low") engagementLevel = "medium";
+    keyIndicators.push("Requested case studies/references");
+  }
+  
+  if (hasUrgency) {
+    scoreIncrease += 10;
+    if (engagementLevel === "low") engagementLevel = "medium";
+    keyIndicators.push("Expressed time sensitivity");
+  }
+  
+  if (hasSpecificQuestion && !hasSchedulingRequest && !hasPricingQuery) {
+    scoreIncrease += 8;
+    if (engagementLevel === "low") engagementLevel = "medium";
+    keyIndicators.push("Asked detailed questions");
+  }
+  
+  // Industry-specific bonus scoring
+  if (startupMode) {
+    if (/innovate|scale|growth|experiment|pilot/i.test(emailResponse)) {
+      scoreIncrease += 8;
+      keyIndicators.push("Startup-oriented language");
+    }
+  } else {
+    if (/enterprise|compliance|security|integrate/i.test(emailResponse)) {
+      scoreIncrease += 8;
+      keyIndicators.push("Enterprise readiness signals");
+    }
+  }
+  
+  // If no strong signals, assign low engagement
+  if (scoreIncrease === 0) {
+    scoreIncrease = 5;
+    engagementLevel = "low";
+    keyIndicators.push("Polite acknowledgment");
+  }
+  
+  const newScore = Math.min(100, currentScore + scoreIncrease);
+  
+  // Generate performance report based on engagement level
+  let performanceReport = "";
+  if (engagementLevel === "high") {
+    performanceReport = `${leadName} shows strong purchase intent with specific asks about ${hasPricingQuery ? 'pricing and ' : ''}${hasSchedulingRequest ? 'scheduling' : 'our solution'}. This lead is demonstrating active evaluation behavior and should be prioritized for immediate follow-up. ${hasUrgency ? 'Time-sensitive opportunity detected.' : 'High conversion probability.'}`;
+  } else if (engagementLevel === "medium") {
+    performanceReport = `${leadName} is demonstrating interest through ${hasCaseStudyRequest ? 'validation requests' : 'detailed questions'}, indicating they are in the research phase. The response suggests genuine consideration but may need additional nurturing before decision-making. Continue engagement with educational content.`;
+  } else {
+    performanceReport = `${leadName} provided a polite but non-committal response. While engagement is minimal, the door remains open for future conversation. Recommend slower nurture cadence with value-focused content to build interest over time.`;
+  }
+  
+  return {
+    newScore,
+    engagementLevel,
+    performanceReport,
+    keyIndicators: keyIndicators.slice(0, 3) // Max 3 indicators
+  };
 };
 
 /**

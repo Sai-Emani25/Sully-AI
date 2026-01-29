@@ -54,16 +54,49 @@ const CampaignsPage: React.FC<CampaignsPageProps> = ({ project }) => {
     const saved = localStorage.getItem(emailKey);
     if (saved) return JSON.parse(saved);
     
-    // Demo email responses per project
+    // Demo email responses per project - aligned with lead data
     if (project.id === 'proj-1') {
       return [
-        { leadName: 'Vikram Singh', email: 'vikram@techcorp.in', subject: 'Re: Cloud Infrastructure Proposal', response: 'Thanks for the detailed proposal. I\'m particularly interested in your multi-cloud security approach. Can we schedule a call next week?', timestamp: new Date(Date.now() - 86400000).toISOString(), status: 'new' as const },
-        { leadName: 'Priya Kumar', email: 'priya@startupxyz.com', subject: 'Re: Scaling Solutions', response: 'Your timing is perfect. We\'re evaluating providers this quarter. What\'s your pricing for 50-100 users?', timestamp: new Date(Date.now() - 172800000).toISOString(), status: 'read' as const }
+        { 
+          leadName: 'Vikram Singh', 
+          email: 'v.singh@indbank.com', 
+          subject: 'Re: Cloud Infrastructure Proposal', 
+          response: 'Thanks for the detailed proposal. I\'m particularly interested in your multi-cloud security approach. Can we schedule a call next week to discuss implementation timelines and pricing for our enterprise deployment?', 
+          timestamp: new Date(Date.now() - 86400000).toISOString(), 
+          status: 'new' as const 
+        },
+        { 
+          leadName: 'Priya Kumar', 
+          email: 'priya@startupxyz.com', 
+          subject: 'Re: Scaling Solutions', 
+          response: 'Your timing is perfect. We\'re evaluating providers this quarter. What\'s your pricing for 50-100 users? Also, do you have case studies from other fintech startups?', 
+          timestamp: new Date(Date.now() - 172800000).toISOString(), 
+          status: 'read' as const 
+        }
       ];
     }
     if (project.id === 'proj-2') {
       return [
-        { leadName: 'Anjali Sharma', email: 'anjali@healthtech.in', subject: 'Re: HIPAA Compliant Storage', response: 'We need this urgently. Do you have case studies from other Indian healthcare startups?', timestamp: new Date(Date.now() - 43200000).toISOString(), status: 'new' as const }
+        { 
+          leadName: 'Anjali Sharma', 
+          email: 'anjali@healthpoint.in', 
+          subject: 'Re: HIPAA Compliant Storage', 
+          response: 'We need this urgently. Do you have case studies from other Indian healthcare startups? Our priority is HIPAA compliance and seamless integration with our existing health stack APIs.', 
+          timestamp: new Date(Date.now() - 43200000).toISOString(), 
+          status: 'new' as const 
+        }
+      ];
+    }
+    if (project.id === 'proj-3') {
+      return [
+        { 
+          leadName: 'Ramesh Babu', 
+          email: 'ramesh.b@apretail.co.in', 
+          subject: 'Re: Omnichannel Inventory Solution', 
+          response: 'This looks promising. Can you help with omnichannel inventory management across 15+ stores? We need better visibility into stock levels and automated reordering.', 
+          timestamp: new Date(Date.now() - 129600000).toISOString(), 
+          status: 'new' as const 
+        }
       ];
     }
     return [];
@@ -73,15 +106,21 @@ const CampaignsPage: React.FC<CampaignsPageProps> = ({ project }) => {
     const saved = localStorage.getItem(inboxKey);
     if (saved) return JSON.parse(saved);
     
-    // Distinct demo data per project
+    // Distinct demo data per project - aligned with lead themes
     if (project.id === 'proj-1') {
-      return [{ leadId: '3', text: "What's your stance on multi-cloud security?", name: 'Vikram Singh', status: 'new' }];
+      return [
+        { leadId: '3', text: "What's your stance on multi-cloud security compliance and automated threat detection for financial services?", name: 'Vikram Singh', status: 'new' }
+      ];
     }
     if (project.id === 'proj-2') {
-      return [{ leadId: '2', text: "Do you integrate with Indian health stack APIs?", name: 'Anjali Sharma', status: 'new' }];
+      return [
+        { leadId: '2', text: "Do you integrate with Indian health stack APIs? We need HIPAA compliance and patient data encryption.", name: 'Anjali Sharma', status: 'new' }
+      ];
     }
     if (project.id === 'proj-3') {
-      return [{ leadId: '1', text: "Can you help with omnichannel inventory?", name: 'Ramesh Babu', status: 'new' }];
+      return [
+        { leadId: '1', text: "Can you help with omnichannel inventory sync across retail stores and e-commerce platforms?", name: 'Ramesh Babu', status: 'new' }
+      ];
     }
     
     return []; // Scratch for others
