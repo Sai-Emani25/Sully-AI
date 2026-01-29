@@ -180,6 +180,35 @@ const Dashboard: React.FC<{ project: Project }> = ({ project }) => {
           <button 
             onClick={handleSync} 
             disabled={isSyncing} 
+            className={`px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-xl active:scale-95 flex items-center gap-2 ${isSyncing ? 'bg-slate-100 text-slate-400' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'}`}
+          >
+            {isSyncing ? 'Syncing...' : 'Sync CRM Data'}
+          </button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {KPI_DATA_BASE.map((kpi, idx) => (
+          <div key={idx} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+            <div className="flex justify-between items-start">
+              <div className={`p-4 rounded-2xl ${kpi.bg} ${kpi.color} text-2xl`}>{kpi.icon}</div>
+              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${kpi.bg} ${kpi.color}`}>{kpi.trend}</span>
+            </div>
+            <div className="mt-5">
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">{kpi.title}</h4>
+              <span className="text-3xl font-black text-slate-900">{getProjectValue(kpi.baseValue, kpi.suffix)}</span>
+              <p className="text-[11px] font-medium text-slate-500 mt-1">{kpi.change}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 relative overflow-hidden group">
+           <div className="absolute top-0 left-0 w-2 bg-indigo-500 h-full group-hover:w-3 transition-all"></div>
+           <div className="flex justify-between items-center mb-8">
+             <div>
+               <h3 className="font-black text-xl text-slate-900 tracking-tight">
                  {showScoreChart && selectedLead ? `Lead Score Tracking: ${selectedLead.name}` : 'Agent Efficiency Over Time'}
                </h3>
                <p className="text-sm text-slate-500">
